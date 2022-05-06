@@ -111,10 +111,6 @@ def get_sequence(accession_number, start, end):
     #takes about 30 seconds to run
 
 
-def generate_oligos(output_seq_file):
-    pass
-
-
 
 #####################################################################################
 
@@ -157,10 +153,11 @@ for organism in organisms.readlines():
         save_file.write('>{}\n'.format(pre))
         save_file.write('>post_200\n')
         save_file.write('>{}\n'.format(post))
-        save_file.write('>forward_oligo\n')
-        save_file.write('>{}\n'.format(fwd))
-        save_file.write('>reverse_oligo\n')
-        save_file.write('>{}\n'.format(rev))
+        if generate_oligos:
+            save_file.write('>forward_oligo\n')
+            save_file.write('>{}\n'.format(fwd))
+            save_file.write('>reverse_oligo\n')
+            save_file.write('>{}\n'.format(rev))
 
     #check for BSA1 sites and start codons //TODO: make the enzyme a parameter
     print("Checking {} for restriction sites.....".format(organism.strip()))
@@ -183,9 +180,6 @@ for organism in organisms.readlines():
         if not (start_codon == "ATG" or start_codon == "GTG" or start_codon == "TTG"):
             warn_file.write("WARNING: Alignment does not start with a start codon\n")
     
-
-
-
 
 
 sys.exit("complete")
