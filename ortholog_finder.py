@@ -7,7 +7,10 @@
 
 ## Imports #############################################################
 import sys #to read commandline arguments
-from Bio.Blast import NCBIWWW
+from Bio.Blast import NCBIWWW # to access NCBI web server
+from Bio.Blast import NCBIXML # to parse results
+from Bio import SeqIO
+from Bio import Entrez
 ########################################################################
 
 ## function define #####################################################
@@ -69,13 +72,26 @@ def parse_arguments() :
 
 def blast(input_seq_file):
     sequence_data = open(input_seq_file).read()
-    result_handle = NCBIWWW.qblast("tblastn", "nt", sequence_data, hitlist_size = 1, entrez_query = '(txid563[ORGN])')
+    result_handle = NCBIWWW.qblast("tblastn", "nt", sequence_data, hitlist_size = 1, entrez_query = '(txid562[ORGN])')
     with open('results.xml', 'w') as save_file:
         blast_results = result_handle.read()
         save_file.write(blast_results)
 
 def generate_oligos(output_seq_file):
     pass
+
+def get_sequence(accession_number, start, end):
+    Entrez.email = "sara.smith@berkeley.edu" #change this to your email
+    handle = Entrez.efetch(db="nucleotide", id=accession_number, rettype="gb", retmode="text")
+    record = SeqIO.read(handle, "genbank")
+    handle.close()
+    ortholog = record.seq[(start-1):end]
+    pre = record.seq[(start-201):start]
+    post = record.seq[(end-1):(end+200)]
+    return ortholog, pre, post
+    #//TODO:more or less working, could have off by one errors 
+    #takes about 30 seconds to run
+
 
 
 #####################################################################################
@@ -89,7 +105,20 @@ ssl._create_default_https_context = ssl._create_unverified_context
 help_message, input_seq_file, input_organism, num, generate_oligos, out_directory = parse_arguments()
 if help_message:
     print_help()
-blast(input_seq_file)
+#blast(input_seq_file)
+
+E_VALUE_THRESH = 1e-20 
+for record in NCBIXML.parse(open("results.xml")): 
+     if record.alignments: 
+        print("\n") 
+        print("query: %s" % record.query[:100]) 
+        for align in record.alignments: 
+           for hsp in align.hsps: 
+              if hsp.expect < E_VALUE_THRESH: 
+                 print("match: %s " % align.title[:100])
+
+print("here")
+print(get_sequence("LR133996.1", 2987872, 2989731))
 
 
 
