@@ -100,7 +100,8 @@ def get_sequence(accession_number, start, end):
     start_codon = segment[200:203]
     if not (start_codon == "ATG" or start_codon == "GTG" or start_codon == "TTG"):
         segment = segment.reverse_complement()
-        #//TODO: check the reverse compliment as well
+        if not (start_codon == "ATG" or start_codon == "GTG" or start_codon == "TTG"):
+            segment = segment.reverse_complement()
     pre = segment[0:200]
     ortholog = segment[200:len(segment)-200]
     post = segment[(len(segment)-201):]
@@ -137,9 +138,16 @@ for organism in organisms.readlines():
     print("Getting sequences for {}.....".format(organism.strip()))
     orth, pre, post = get_sequence(acc, start, end)
     print(orth, pre, post)
-    print("Writing file for {}.....".format(organism.strip()))
 
-    #write the three sequences to a fasta file
+
+    #generate oligos
+    if generate_oligos:
+        print("Generating oligos for {}.....".format(organism.strip()))
+        fwd = "ccaaaGGTCTCaCCCT" + pre[:20]
+        rev =  "gctagGGTCTCgGAAC" + post[:20].reverse_complement()
+
+    #write sequences to a fasta file 
+    print("Writing file for {}.....".format(organism.strip()))       
     filename = "{}{}/result_sequences.fasta".format(out_directory, organism.strip())
     os.makedirs(os.path.dirname(filename), exist_ok=True)
     with open(filename, 'w') as save_file:
@@ -149,8 +157,12 @@ for organism in organisms.readlines():
         save_file.write('>{}\n'.format(pre))
         save_file.write('>post_200\n')
         save_file.write('>{}\n'.format(post))
+        save_file.write('>forward_oligo\n')
+        save_file.write('>{}\n'.format(fwd))
+        save_file.write('>reverse_oligo\n')
+        save_file.write('>{}\n'.format(rev))
 
-    #check for BSA1 sites //TODO: make the enzyme a parameter
+    #check for BSA1 sites and start codons //TODO: make the enzyme a parameter
     print("Checking {} for restriction sites.....".format(organism.strip()))
     filename = "{}{}/warnings.txt".format(out_directory, organism.strip())
     os.makedirs(os.path.dirname(filename), exist_ok=True)
@@ -167,6 +179,11 @@ for organism in organisms.readlines():
             warn_file.write("WARNING: Post-200 sequence contains a BSA1 site\n")
         if "CCAGAG" in post:
             warn_file.write("WARNING: Post-200 sequence contains a BSA1 site\n")
+        start_codon = orth[:3]
+        if not (start_codon == "ATG" or start_codon == "GTG" or start_codon == "TTG"):
+            warn_file.write("WARNING: Alignment does not start with a start codon\n")
+    
+
 
 
 
