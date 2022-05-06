@@ -20,7 +20,7 @@ def print_help():
     Arguments:
     -h :print help menu
     -i :input sequence in fasta format (no default)
-    -org :input organism as string (no default)
+    -orgs :file of taxonomy number of organisms to search (default e.coli, 562)
     -n :number of orthologs to return (default 1)
     -oligo :if included, generate suggested oligos
     -out :output file name (default 'Ortholog_Finder_Output' in current directory)
@@ -32,7 +32,7 @@ def parse_arguments() :
     #set defaults
     phelp = False
     seq_file = None
-    orgainism = "testing parse... organism"
+    organisms = "default_organisms.txt"
     number = 1
     oligo = False
     out = "./Ortholog_Finder_Output"
@@ -48,8 +48,8 @@ def parse_arguments() :
             seq_file = sys.argv[i+1]
             print("printing seq_file", seq_file)
             i += 2
-        elif token == "-org":
-            organism = sys.argv[i+1]
+        elif token == "-orgs":
+            organisms = sys.argv[i+1]
             i += 2
         elif token == "-n":
             number = sys.argv[i+1]
@@ -66,7 +66,7 @@ def parse_arguments() :
     if seq_file == None:
         print("missing required argument")
         print_help()
-    return phelp, seq_file, orgainism, number, oligo, out
+    return phelp, seq_file, organisms, number, oligo, out
     
 
 
@@ -76,9 +76,20 @@ def blast(input_seq_file):
     with open('results.xml', 'w') as save_file:
         blast_results = result_handle.read()
         save_file.write(blast_results)
+    
+    #gets just the highest scoring alignment. Future improvements to this program could consider more than one
+    record = NCBIXML.parse(open("results.xml"))[0] 
+    acc = None
+    start = None
+    end = None
+    if record.alignments: 
+        align = record.alignments[0]
+        acc = align.accession
+        hsp = align.hsps[0]
+        start = hsp.sbjct_start
+        end = hsp.sbjct_end
+    return acc, start, end
 
-def generate_oligos(output_seq_file):
-    pass
 
 def get_sequence(accession_number, start, end):
     Entrez.email = "sara.smith@berkeley.edu" #change this to your email
@@ -86,9 +97,10 @@ def get_sequence(accession_number, start, end):
     record = SeqIO.read(handle, "genbank")
     handle.close()
     segment = record.seq[(start-201):end+200]
-    start_codon = segment[200:3]
-    if start_codon == "ATG" or start_codon == "GTG" or start_codon == "TTG":
+    start_codon = segment[200:203]
+    if !(start_codon == "ATG" or start_codon == "GTG" or start_codon == "TTG"):
         segment = segment.reverse_compliment()
+        #//TODO: check the reverse compliment as well
     pre = segment[0:200]
     ortholog = segment[200:len(segment)-200]
     post = segment[(len(segment)-201):]
@@ -97,6 +109,9 @@ def get_sequence(accession_number, start, end):
     #//TODO:more or less working, could have off by one errors 
     #takes about 30 seconds to run
 
+def generate_oligos(output_seq_file):
+    pass
+
 
 
 #####################################################################################
@@ -104,26 +119,14 @@ def get_sequence(accession_number, start, end):
 ## workaround ######### https://stackoverflow.com/questions/27835619/urllib-and-ssl-certificate-verify-failed-error#comment72358900_42334357, https://github.com/biopython/biopython/issues/3671
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
-########
+#####################################################################################
 
 # main part of the program ##########################################################
 help_message, input_seq_file, input_organism, num, generate_oligos, out_directory = parse_arguments()
 if help_message:
     print_help()
-#blast(input_seq_file)
+blast(input_seq_file)
 
-E_VALUE_THRESH = 1e-20 
-for record in NCBIXML.parse(open("results.xml")): 
-     if record.alignments: 
-        print("\n") 
-        print("query: %s" % record.query[:100]) 
-        for align in record.alignments: 
-           for hsp in align.hsps: 
-              if hsp.expect < E_VALUE_THRESH: 
-                 print("match: %s " % align.title[:100])
-
-print("here")
-print(get_sequence("LR133996.1", 2987872, 2989731))
 
 
 
