@@ -1,7 +1,7 @@
+## notes section #######################################################
+
 # Ortholog Finder, final project for BIOENG 140L
 # written by Sara Smith
-
-## notes section #######################################################
 
 ########################################################################
 
@@ -85,9 +85,14 @@ def get_sequence(accession_number, start, end):
     handle = Entrez.efetch(db="nucleotide", id=accession_number, rettype="gb", retmode="text")
     record = SeqIO.read(handle, "genbank")
     handle.close()
-    ortholog = record.seq[(start-1):end]
-    pre = record.seq[(start-201):start]
-    post = record.seq[(end-1):(end+200)]
+    segment = record.seq[(start-201):end+200]
+    start_codon = segment[200:3]
+    if start_codon == "ATG" or start_codon == "GTG" or start_codon == "TTG":
+        segment = segment.reverse_compliment()
+    pre = segment[0:200]
+    ortholog = segment[200:len(segment)-200]
+    post = segment[(len(segment)-201):]
+
     return ortholog, pre, post
     #//TODO:more or less working, could have off by one errors 
     #takes about 30 seconds to run
