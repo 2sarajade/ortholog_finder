@@ -1,0 +1,2 @@
+WARNING: Ortholog contains a BSA1 site
+WARNING: Pre-200 sequence contains a BSA1 site

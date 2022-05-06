@@ -7,6 +7,7 @@
 
 ## Imports #############################################################
 import sys #to read commandline arguments
+import os # helps with creating output directories
 from Bio.Blast import NCBIWWW # to access NCBI web server
 from Bio.Blast import NCBIXML # to parse results
 from Bio import SeqIO
@@ -69,7 +70,9 @@ def parse_arguments() :
 def blast(input_seq_file, organism, out):
     sequence_data = open(input_seq_file).read()
     result_handle = NCBIWWW.qblast("tblastn", "nt", sequence_data, alignments = 1, hitlist_size = 1, entrez_query = '(txid{}[ORGN])'.format(organism))
-    with open("{}{}/results.xml".format(out, organism), 'w') as save_file:
+    filename = "{}{}/results.xml".format(out, organism)
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, 'w') as save_file:
         blast_results = result_handle.read()
         save_file.write(blast_results)
     #this can be quite slow. it starts by polling NCBI after 20 seconds, then polls once per minute
@@ -96,7 +99,7 @@ def get_sequence(accession_number, start, end):
     segment = record.seq[(start-201):end+200]
     start_codon = segment[200:203]
     if not (start_codon == "ATG" or start_codon == "GTG" or start_codon == "TTG"):
-        segment = segment.reverse_compliment()
+        segment = segment.reverse_complement()
         #//TODO: check the reverse compliment as well
     pre = segment[0:200]
     ortholog = segment[200:len(segment)-200]
@@ -106,8 +109,6 @@ def get_sequence(accession_number, start, end):
     #//TODO:more or less working, could have off by one errors 
     #takes about 30 seconds to run
 
-def check_sequences(organism, out):
-    pass
 
 def generate_oligos(output_seq_file):
     pass
@@ -127,10 +128,6 @@ print("Parsing arguments.....")
 help_message, input_seq_file, input_organism, generate_oligos, out_directory = parse_arguments()
 if help_message:
     print_help()
-#print("start blast")
-#acc, start, end = blast(input_seq_file, "563")
-#print("start get sequence")
-#sprint(get_sequence(acc, start, end))
 
 #loop through organisms
 organisms = open(input_organism, 'r')
@@ -141,14 +138,37 @@ for organism in organisms.readlines():
     orth, pre, post = get_sequence(acc, start, end)
     print(orth, pre, post)
     print("Writing file for {}.....".format(organism.strip()))
-    with open("{}{}/result_sequences.fasta".format(out_file, organism), 'w') as save_file:
+
+    #write the three sequences to a fasta file
+    filename = "{}{}/result_sequences.fasta".format(out_directory, organism.strip())
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, 'w') as save_file:
         save_file.write('>ortholog\n')
         save_file.write('{}\n'.format(orth))
         save_file.write('>pre_200\n')
         save_file.write('>{}\n'.format(pre))
         save_file.write('>post_200\n')
         save_file.write('>{}\n'.format(post))
-    check_sequences(organism)
+
+    #check for BSA1 sites //TODO: make the enzyme a parameter
+    print("Checking {} for restriction sites.....".format(organism.strip()))
+    filename = "{}{}/warnings.txt".format(out_directory, organism.strip())
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    with open(filename, 'w') as warn_file:
+        if "GGTCTC" in orth:
+            warn_file.write("WARNING: Ortholog contains a BSA1 site\n")
+        if "CCAGAG" in orth:
+            warn_file.write("WARNING: Ortholog contains a BSA1 site\n")
+        if "GGTCTC" in pre:
+            warn_file.write("WARNING: Pre-200 sequence contains a BSA1 site\n")
+        if "CCAGAG" in pre:
+            warn_file.write("WARNING: Pre-200 sequence contains a BSA1 site\n")
+        if "GGTCTC" in post:
+            warn_file.write("WARNING: Post-200 sequence contains a BSA1 site\n")
+        if "CCAGAG" in post:
+            warn_file.write("WARNING: Post-200 sequence contains a BSA1 site\n")
+
+
 
 
 sys.exit("complete")
