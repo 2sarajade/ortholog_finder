@@ -1,22 +1,18 @@
 # Ortholog Finder, final project for BIOENG 140L
 # written by Sara Smith
 
-# notes section ########################################################
-#sys.argv[i]
-#print("\nArguments passed:", end = " ")
-#for i in range(1, n):
-#    print(sys.argv[i], end = " ")
-#https://www.geeksforgeeks.org/how-to-use-sys-argv-in-python/
+## notes section #######################################################
+
 ########################################################################
 
-## Imports
+## Imports #############################################################
 import sys #to read commandline arguments
-#from Bio.Blast import NCBIWWW
-## read commandline arguments
+from Bio.Blast import NCBIWWW
+########################################################################
 
+## function define #####################################################
 def print_help():
-    help_message = 
-    """Ortholog Finder
+    help_message = """Ortholog Finder
     version 1
     Arguments:
     -h :print help menu
@@ -38,6 +34,7 @@ def parse_arguments() :
     oligo = False
     out = "./Ortholog_Finder_Output"
 
+    #update with user input
     i = 1
     while i < len(sys.argv):
         token = sys.argv[i]
@@ -63,28 +60,37 @@ def parse_arguments() :
         else:
             print(sys.argv[i], "is an unrecognized token. use -h to see the list of accepted arguments")
             break
+    if seq_file == None:
+        print("missing required argument")
+        print_help()
     return phelp, seq_file, orgainism, number, oligo, out
     
 
 
 def blast(input_seq_file):
-    sequence_data = open(input_seq_file).read() 
-    result_handle = NCBIWWW.qblast("tblastn", "nt", sequence_data)
+    sequence_data = open(input_seq_file).read()
+    result_handle = NCBIWWW.qblast("tblastn", "nt", sequence_data, hitlist_size = 1, entrez_query = '(txid563[ORGN])')
     with open('results.xml', 'w') as save_file:
         blast_results = result_handle.read()
         save_file.write(blast_results)
+
+def generate_oligos(output_seq_file):
     pass
 
-def generate_oligos():
-    pass
 
+#####################################################################################
+
+## workaround ######### https://stackoverflow.com/questions/27835619/urllib-and-ssl-certificate-verify-failed-error#comment72358900_42334357, https://github.com/biopython/biopython/issues/3671
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+########
 
 # main part of the program ##########################################################
 help_message, input_seq_file, input_organism, num, generate_oligos, out_directory = parse_arguments()
-#testing parse
-print(help_message, input_seq_file, input_organism, num, generate_oligos, out_directory)
 if help_message:
     print_help()
+blast(input_seq_file)
+
 
 
 
