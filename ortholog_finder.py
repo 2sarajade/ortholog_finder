@@ -10,7 +10,7 @@ import sys #to read commandline arguments
 from Bio.Blast import NCBIWWW # to access NCBI web server
 from Bio.Blast import NCBIXML # to parse results
 from Bio import SeqIO
-from Bio import Entrez
+from Bio import Entrez # to access sequences
 ########################################################################
 
 ## function define #####################################################
@@ -21,9 +21,8 @@ def print_help():
     -h :print help menu
     -i :input sequence in fasta format (no default)
     -orgs :file of taxonomy number of organisms to search (default e.coli, 562)
-    -n :number of orthologs to return (default 1)
     -oligo :if included, generate suggested oligos
-    -out :output file name (default 'Ortholog_Finder_Output' in current directory)
+    -out :output directory name (default 'Ortholog_Finder_Output' in current directory)
     """
     print (help_message)
     sys.exit("exiting the program")
@@ -33,9 +32,8 @@ def parse_arguments() :
     phelp = False
     seq_file = None
     organisms = "default_organisms.txt"
-    number = 1
     oligo = False
-    out = "./Ortholog_Finder_Output"
+    out = "./Ortholog_Finder_Output/"
 
     #update with user input
     i = 1
@@ -51,9 +49,6 @@ def parse_arguments() :
         elif token == "-orgs":
             organisms = sys.argv[i+1]
             i += 2
-        elif token == "-n":
-            number = sys.argv[i+1]
-            i += 2
         elif token == "-oligo":
             oligo = True
             i += 1
@@ -62,32 +57,34 @@ def parse_arguments() :
             i += 2
         else:
             print(sys.argv[i], "is an unrecognized token. use -h to see the list of accepted arguments")
-            break
+            i += 1
+            continue
     if seq_file == None:
         print("missing required argument")
         print_help()
-    return phelp, seq_file, organisms, number, oligo, out
+    return phelp, seq_file, organisms, oligo, out
     
 
 
-def blast(input_seq_file):
+def blast(input_seq_file, organism, out):
     sequence_data = open(input_seq_file).read()
-    result_handle = NCBIWWW.qblast("tblastn", "nt", sequence_data, hitlist_size = 1, entrez_query = '(txid562[ORGN])')
-    with open('results.xml', 'w') as save_file:
+    result_handle = NCBIWWW.qblast("tblastn", "nt", sequence_data, alignments = 1, hitlist_size = 1, entrez_query = '(txid{}[ORGN])'.format(organism))
+    with open("{}{}/results.xml".format(out, organism), 'w') as save_file:
         blast_results = result_handle.read()
         save_file.write(blast_results)
+    #this can be quite slow. it starts by polling NCBI after 20 seconds, then polls once per minute
     
     #gets just the highest scoring alignment. Future improvements to this program could consider more than one
-    record = NCBIXML.parse(open("results.xml"))[0] 
-    acc = None
-    start = None
-    end = None
-    if record.alignments: 
-        align = record.alignments[0]
-        acc = align.accession
-        hsp = align.hsps[0]
-        start = hsp.sbjct_start
-        end = hsp.sbjct_end
+    for record in  NCBIXML.parse(open("{}{}/results.xml".format(out, organism))):
+        acc = None
+        start = None
+        end = None
+        if record.alignments: 
+            align = record.alignments[0]
+            acc = align.accession
+            hsp = align.hsps[0]
+            start = hsp.sbjct_start
+            end = hsp.sbjct_end
     return acc, start, end
 
 
@@ -98,7 +95,7 @@ def get_sequence(accession_number, start, end):
     handle.close()
     segment = record.seq[(start-201):end+200]
     start_codon = segment[200:203]
-    if !(start_codon == "ATG" or start_codon == "GTG" or start_codon == "TTG"):
+    if not (start_codon == "ATG" or start_codon == "GTG" or start_codon == "TTG"):
         segment = segment.reverse_compliment()
         #//TODO: check the reverse compliment as well
     pre = segment[0:200]
@@ -108,6 +105,9 @@ def get_sequence(accession_number, start, end):
     return ortholog, pre, post
     #//TODO:more or less working, could have off by one errors 
     #takes about 30 seconds to run
+
+def check_sequences(organism, out):
+    pass
 
 def generate_oligos(output_seq_file):
     pass
@@ -122,13 +122,36 @@ ssl._create_default_https_context = ssl._create_unverified_context
 #####################################################################################
 
 # main part of the program ##########################################################
-help_message, input_seq_file, input_organism, num, generate_oligos, out_directory = parse_arguments()
+print("Starting Program")
+print("Parsing arguments.....")
+help_message, input_seq_file, input_organism, generate_oligos, out_directory = parse_arguments()
 if help_message:
     print_help()
-blast(input_seq_file)
+#print("start blast")
+#acc, start, end = blast(input_seq_file, "563")
+#print("start get sequence")
+#sprint(get_sequence(acc, start, end))
+
+#loop through organisms
+organisms = open(input_organism, 'r')
+for organism in organisms.readlines():
+    print("Starting blast on {}.....".format(organism.strip()))
+    acc, start, end = blast(input_seq_file, organism.strip(), out_directory)  
+    print("Getting sequences for {}.....".format(organism.strip()))
+    orth, pre, post = get_sequence(acc, start, end)
+    print(orth, pre, post)
+    print("Writing file for {}.....".format(organism.strip()))
+    with open("{}{}/result_sequences.fasta".format(out_file, organism), 'w') as save_file:
+        save_file.write('>ortholog\n')
+        save_file.write('{}\n'.format(orth))
+        save_file.write('>pre_200\n')
+        save_file.write('>{}\n'.format(pre))
+        save_file.write('>post_200\n')
+        save_file.write('>{}\n'.format(post))
+    check_sequences(organism)
 
 
-
+sys.exit("complete")
 
 
 
