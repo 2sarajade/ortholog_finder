@@ -106,8 +106,7 @@ def get_sequence(accession_number, start, end):
     ortholog = segment[200:len(segment)-200]
     post = segment[(len(segment)-201):]
 
-    return ortholog, pre, post
-    #//TODO:more or less working, could have off by one errors 
+    return ortholog, pre, post 
     #takes about 30 seconds to run
 
 
