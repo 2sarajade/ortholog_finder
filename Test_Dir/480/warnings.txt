@@ -1,0 +1,1 @@
+WARNING: Alignment does not start with a start codon

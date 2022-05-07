@@ -150,14 +150,14 @@ for organism in organisms.readlines():
         save_file.write('>ortholog\n')
         save_file.write('{}\n'.format(orth))
         save_file.write('>pre_200\n')
-        save_file.write('>{}\n'.format(pre))
+        save_file.write('{}\n'.format(pre))
         save_file.write('>post_200\n')
-        save_file.write('>{}\n'.format(post))
+        save_file.write('{}\n'.format(post))
         if generate_oligos:
             save_file.write('>forward_oligo\n')
-            save_file.write('>{}\n'.format(fwd))
+            save_file.write('{}\n'.format(fwd))
             save_file.write('>reverse_oligo\n')
-            save_file.write('>{}\n'.format(rev))
+            save_file.write('{}\n'.format(rev))
 
     #check for BSA1 sites and start codons //TODO: make the enzyme a parameter
     print("Checking {} for restriction sites.....".format(organism.strip()))
